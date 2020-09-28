@@ -1,0 +1,59 @@
+{
+  "nodes": {
+    "beamer-theme-serokell": {
+      "locked": {
+        "lastModified": 1601538885,
+        "narHash": "sha256-2ijdRQiBXvCQAdTSrED1OS8wibFYyfEXCyj9EL/Nj1Q=",
+        "type": "git",
+        "url": "file:///home/balsoft/projects/serokell/beamer-theme-serokell"
+      },
+      "original": {
+        "owner": "serokell",
+        "repo": "beamer-theme-serokell",
+        "type": "github"
+      }
+    },
+    "nix-pandoc": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 0,
+        "narHash": "sha256-iBoN6TZ/VNL3s7P3nLNuAJ6NVlB4GllUWofxGklVAvU=",
+        "type": "git",
+        "url": "file:///home/balsoft/projects/serokell/nix-pandoc"
+      },
+      "original": {
+        "owner": "serokell",
+        "repo": "nix-pandoc",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1598385881,
+        "narHash": "sha256-kBvSrVo9NrWlQEvMtjEx/TCEDQTAG1M8pxhyxj0PSyU=",
+        "owner": "serokell",
+        "repo": "nixpkgs",
+        "rev": "66a26e65eb7f9b6cb3f773052da0cd3ac52f015c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "serokell",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "root": {
+      "inputs": {
+        "beamer-theme-serokell": "beamer-theme-serokell",
+        "nix-pandoc": "nix-pandoc",
+        "nixpkgs": "nixpkgs"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
