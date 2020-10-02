@@ -23,5 +23,5 @@ reloads PDF documents when they change.
 *** Without flakes
 
 #+BEGIN_SRC
-nix-build -I https://github.com/serokell/nixcon2020-talk/archive/master.tar.gz
+nix-build https://github.com/serokell/nixcon2020-talk/archive/master.tar.gz
 #+END_SRC
