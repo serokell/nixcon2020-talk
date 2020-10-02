@@ -22,6 +22,4 @@ in mkDoc {
     which
     python2.pkgs.pygments
   ];
-
-  enableParallelBuilding = true;
 }

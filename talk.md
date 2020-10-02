@@ -11,7 +11,8 @@ monofont: Ubuntu Mono
 sansfont: Oswald
 theme: Serokell
 header-includes:
-  - \usepackage[outputdir=/tmp/pandoc]{minted}
+  - \usepackage[outputdir=_output]{minted}
+  - \usemintedstyle{monokai}
 ---
 
 
@@ -185,7 +186,7 @@ downloads tarballs, unpacks and places them somewhere in `NIX_PATH`.
 
 ### `default.nix`
 
-```
+```nix
 let pkgs = import <nixpkgs> { }; in pkgs.callPackage ./talk.nix { }
 ```
 
@@ -195,7 +196,8 @@ let pkgs = import <nixpkgs> { }; in pkgs.callPackage ./talk.nix { }
 
 ### Override
 
-    NIX_PATH=nixpkgs=/path/to/nixpkgs nix-build
+    $ NIX_PATH=nixpkgs=/path/to/nixpkgs nix-build
+
 
 Alternatives: Pinning with fetchTarball
 ---------------------------------------
@@ -219,31 +221,26 @@ channel -- you can easily pin your dependencies with `builtins` (either
 :::
 
 
-::: block
-
 ### Set up (or update/override)
-
+   
     # Go to github and get the commit you want, then paste it accordingly below
     $ nix-prefetch-url \
         https://github.com/serokell/nixpkgs/archive/1e22f760.tar.gz
     # Paste the output to sha256 argument of fetchTarball
 
-:::
-
 ::: block
 ### `default.nix`
-
 ```nix
 let nixpkgs = builtins.fetchTarball {
   url = "https://github.com/serokell/nixpkgs/archive/1e22f760.tar.gz";
-  sha256 = "";
+  sha256 = "0sfklpvmq9d4j81x886v9n6n176m9hxp0zi1hzkhv4gip185932j";
 }; pkgs = import nixpkgs { }; in pkgs.callPackage ./talk.nix { }
 ```
-
 :::
 
 -   No way to easily update or override inputs (requires changing the
     file manually)
+
 
 Alternatives: Niv
 -----------------
@@ -276,7 +273,7 @@ channels to flakes!
 
 ### `default.nix`
 
-```
+```nix
 let sources = import ./nix/sources.nix; pkgs = import sources.nixpkgs { };
 in pkgs.callPackage ./talk.nix { }
 ```
@@ -351,7 +348,7 @@ As you might have guessed, flakes solve all of these problems.
 :::
 
 ### `flake.nix`
-```
+```nix
 {
   inputs = {
     nixpkgs.url = "github:serokell/nixpkgs";
@@ -375,7 +372,8 @@ you can evaluate a derivation for any platform from any platform easily,
 and that we never use `<nixpkgs>` or other impure things.
 :::
 
-------------------------------------------------------------------------
+<!-- Actual framebreaks are broken in minted; this will do for now -->
+## 
 
 ### Set up (not required, it just copies a skeleton for flake.nix to the project)
 
@@ -526,7 +524,7 @@ And take a look at what's inside:
 :::
 
 ### `flake.nix`
-```
+```nix
 {
   description = "A very basic flake";
   outputs = { self, nixpkgs }: {
@@ -586,7 +584,7 @@ native package for `aarch64` by using `boot.binfmt.emulatedSystems`.
 
 :::
 
--------------------------------------------------------------------------------
+## 
 
 ::: notes
 Now that we understand what every part of that file means, it's time to build!
@@ -623,10 +621,6 @@ evaluation caching!
     $ ./result/bin/hello
     Hello, world!
 
-::: notes
-
-:::
-
 
 But unstable Nix is not an option for CI / developers / my grandmother!
 ----------------------------------------------------
@@ -641,7 +635,7 @@ flake dependencies, but your users don't.
 
 ### `default.nix`
 
-```
+```nix
 (import (fetchTarball
   "https://github.com/edolstra/flake-compat/archive/master.tar.gz") {
     src = builtins.fetchGit ./.;

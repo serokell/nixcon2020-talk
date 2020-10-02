@@ -5,7 +5,7 @@ TALK = talk.md
 BEAMER_OPTS = --standalone \
   --pdf-engine=xelatex \
   --pdf-engine-opt=-shell-escape \
-  --pdf-engine-opt=-output-directory=/tmp/pandoc \
+  --pdf-engine-opt=-output-directory=_output \
   --slide-level=2 \
   --to beamer \
   --no-highlight \
@@ -16,18 +16,17 @@ all: $(ALL)
 
 presentation.pdf: $(TALK)
 	pandoc $(BEAMER_OPTS) -o $@ $<
+	rm _output -rf
 
 speaker-notes.pdf: $(TALK)
 	pandoc $(BEAMER_OPTS) --metadata='classoption:notes=only' -o $@ $<
-
-talk.pdf: $(TALK)
-	pandoc --standalone --pdf-engine=xelatex --lua-filter minted.lua --pdf-engine-opt=-shell-escape --pdf-engine-opt=-output-directory=/tmp/pandoc --to pdf -o $@ $<
+	rm _output -rf
 
 article.html: $(TALK)
 	pandoc --standalone --to html	-o $@ $<
 
 
-autoreload: ; while sleep 1; do $(MAKE); done
+autoreload: ; while sleep 1; do $(MAKE) presentation.pdf; done
 
 clean:
 	git clean -dXf
