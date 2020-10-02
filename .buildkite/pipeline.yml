@@ -1,0 +1,10 @@
+steps:
+  - label: Build
+    command:
+      - nix-build
+    agents:
+      private: "true"
+    artifact_paths:
+      - result/presentation.pdf
+      - result/speaker-notes.pdf
+      - result/article.html
