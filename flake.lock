@@ -1,11 +1,14 @@
 {
   "nodes": {
     "beamer-theme-serokell": {
+      "flake": false,
       "locked": {
         "lastModified": 1601538885,
-        "narHash": "sha256-2ijdRQiBXvCQAdTSrED1OS8wibFYyfEXCyj9EL/Nj1Q=",
-        "type": "git",
-        "url": "file:///home/balsoft/projects/serokell/beamer-theme-serokell"
+        "narHash": "sha256-Mn5ApkJIX3vxxvkMoPWdGc6Z9lwBpiiEnzulK6ISCuQ=",
+        "owner": "serokell",
+        "repo": "beamer-theme-serokell",
+        "rev": "72d043555ea10ea713a628c658d6f4ae718bd686",
+        "type": "github"
       },
       "original": {
         "owner": "serokell",
@@ -20,10 +23,12 @@
         ]
       },
       "locked": {
-        "lastModified": 0,
-        "narHash": "sha256-iBoN6TZ/VNL3s7P3nLNuAJ6NVlB4GllUWofxGklVAvU=",
-        "type": "git",
-        "url": "file:///home/balsoft/projects/serokell/nix-pandoc"
+        "lastModified": 1601644537,
+        "narHash": "sha256-i71ZLyJJh4Ey4fYFmEQURH4gqSFuIRRE3zuZW9Dak1A=",
+        "owner": "serokell",
+        "repo": "nix-pandoc",
+        "rev": "3d6336f2d8af706fcb53c4aacdd6c02fed624ac1",
+        "type": "github"
       },
       "original": {
         "owner": "serokell",
@@ -33,11 +38,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1598385881,
-        "narHash": "sha256-kBvSrVo9NrWlQEvMtjEx/TCEDQTAG1M8pxhyxj0PSyU=",
+        "lastModified": 1601640588,
+        "narHash": "sha256-EKCgoeOA5i3DQQx2lfyzvjwCiklnSCXsnHzh9gg1AD4=",
         "owner": "serokell",
         "repo": "nixpkgs",
-        "rev": "66a26e65eb7f9b6cb3f773052da0cd3ac52f015c",
+        "rev": "1e22f7603d223a67e7cd219939e1c1042419ff24",
         "type": "github"
       },
       "original": {
