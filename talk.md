@@ -223,8 +223,8 @@ channel -- you can easily pin your dependencies with `builtins` (either
         by figuring out commits and hashes and then editing the sources;
 :::
 
--   No way to easily update or override inputs (requires changing the
-    file manually)
+
+::: block
 
 ### Set up (or update/override)
 
@@ -256,7 +256,10 @@ Alternatives: Niv
 ::: notes
 In summer 2019, @nmattia started work on Niv, a project which promises
 "Easy dependency management for Nix projects". And it does deliver on
-that promise.
+that promise. We have switched most of our projects to use Niv before we
+started experimenting with flakes, and that wasn't any time wasted because
+transtitioning from Niv to flakes is easier than transitioning from
+channels to flakes!
 
 -   Benefits
     -   Somewhat reproducible: unless you accidentally use channels or
