@@ -1,5 +1,5 @@
-{ linkFarm, mkDoc, texlive, pandoc, fontconfig
-, beamer-theme-serokell, google-fonts }:
+{ runCommand, mkDoc, texlive, pandoc, fontconfig, beamer-theme-serokell
+, google-fonts, python2, which }:
 let
   texlive-packages = {
     inherit (texlive)
@@ -7,8 +7,9 @@ let
       fvextra catchfile xstring framed;
   };
 
-
   texlive-combined = texlive.combine texlive-packages;
+
+
 
 in mkDoc {
   name = "nixcon-talk";
@@ -17,7 +18,10 @@ in mkDoc {
   inherit texlive-combined;
   HOME = "/build";
   extraTexInputs = [ beamer-theme-serokell ];
-  extraBuildInputs = [ ];
+  extraBuildInputs = [
+    which
+    python2.pkgs.pygments
+  ];
 
   enableParallelBuilding = true;
 }

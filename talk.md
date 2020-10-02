@@ -10,8 +10,12 @@ mainfont: Catamaran
 monofont: Ubuntu Mono
 sansfont: Oswald
 theme: Serokell
+header-includes:
+  - \usepackage[outputdir=/tmp/pandoc]{minted}
 ---
 
+
+  
 About this presentation
 -----------------------
 
@@ -93,7 +97,7 @@ versions and checksums of all the `inputs`.
 
 ### `flake.nix`
 
-```
+```nix
 {
   description = "<...>";
   inputs = { nixpkgs = <...>; };
@@ -103,41 +107,28 @@ versions and checksums of all the `inputs`.
 
 ### `flake.lock`
 
-``` {.json}
+```json
 {
-  "nodes": <...>,
-  "root": "root",
-  "version": 7
+    "nodes": <...>,
+    "root": "root",
+    "version": 7
 }
 ```
 
-
 Why would one use them for production?
 ======================================
-
-::: notes
-Now that you know what a flake is, we can move on to the next question:
-Why would one use them in a production environment? There are two parts
-to this question: Is there even a point? And aren't flakes unstable
-right now? Answers are "Yes" and "Kind of". But first, let's look at our
-requirements to understand what problems we're trying to solve.
-:::
-
-### What are the benefits? Is there a point in using flakes?
-
-Yes! There are three main benefits: uniform user interface, hermetic
-evaluation and integration with the rest of Nix.
-
-### Aren't flakes unstable and dangerous?
-
-Yes and no. Nix 3.0 is currently pretty unstable, but flakes themselves
-work pretty well; besides, you don't actually have to use Nix 3 to get
-most benefits of flakes! (more on that later)
-
 What qualities do we need from nix in our production projects?
 --------------------------------------------------------------
 
+::: notes
+Now that you know what a flake is, we can move on to the next question:
+Why would one use them in a production environment? But first, let's look
+at our requirements to understand what problems we're trying to solve.
+:::
+
+
 -   Reproducible
+
     ::: notes
     at both evaluation and build time: whether it's a developer
     building the project on their computer or a CI build, the output
@@ -145,12 +136,14 @@ What qualities do we need from nix in our production projects?
     :::
 
 -   Easy to use
+
     ::: notes
     Developers with little nix experience need to be able to easily
     update dependencies and build their project;
     :::
 
 -   Cross-platform
+
     ::: notes
     Our developers use all three major OSs and we need to support all of
     those.
@@ -158,7 +151,8 @@ What qualities do we need from nix in our production projects?
 
 ::: notes
 So, to understand why we are excited about flakes, let's take a look at
-the alternatives.
+the alternatives. We'll use a simplified version of this talk's nix expression
+as an example.
 :::
 
 Alternatives: Channels
@@ -185,7 +179,8 @@ downloads tarballs, unpacks and places them somewhere in `NIX_PATH`.
 
 ### Set up (for every user that wants to build your package)
 
-    $ nix-channel --add https://nixos.org/channels/nixos-20.09 nixos
+    $ nix-channel --add \
+      https://github.com/serokell/nixpkgs/archive/master.tar.gz nixpkgs
     $ nix-channel --update
 
 ### `default.nix`
@@ -229,8 +224,8 @@ channel -- you can easily pin your dependencies with `builtins` (either
 ### Set up (or update/override)
 
     # Go to github and get the commit you want, then paste it accordingly below
-    $ nix-prefetch-tarball \
-        https://github.com/nixos/nixpkgs/archive/66a26e65.tar.gz
+    $ nix-prefetch-url \
+        https://github.com/serokell/nixpkgs/archive/1e22f760.tar.gz
     # Paste the output to sha256 argument of fetchTarball
 
 :::
@@ -238,13 +233,13 @@ channel -- you can easily pin your dependencies with `builtins` (either
 ::: block
 ### `default.nix`
 
-
-```
+```nix
 let nixpkgs = builtins.fetchTarball {
-  url = "https://github.com/nixos/nixpkgs/archive/66a26e65.tar.gz";
-  sha256 = "1hdk7frf66if9b35f0xhjs2322y280k2kivpzkfc5s1lc16kzkdp";
+  url = "https://github.com/serokell/nixpkgs/archive/1e22f760.tar.gz";
+  sha256 = "";
 }; pkgs = import nixpkgs { }; in pkgs.callPackage ./talk.nix { }
 ```
+
 :::
 
 -   No way to easily update or override inputs (requires changing the
@@ -359,7 +354,7 @@ As you might have guessed, flakes solve all of these problems.
 ```
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs";
+    nixpkgs.url = "github:serokell/nixpkgs";
   };
   outputs = { self, nixpkgs }: {
     defaultPackage = builtins.mapAttrs
@@ -368,6 +363,17 @@ As you might have guessed, flakes solve all of these problems.
   };
 }
 ```
+
+::: notes
+There's quite a lot happening in this file, and we'll get back to what
+everything means later in the talk. For now, note that we specify inputs
+by describing their locations but not their versions (those are pinned
+automatically by nix in `flake.lock` -- remember that?), and that `outputs`
+depend on the inputs. Also note how we never use `builtins.currentSystem`
+and instead map over all the possible systems provided by `nixpkgs`, meaning
+you can evaluate a derivation for any platform from any platform easily,
+and that we never use `<nixpkgs>` or other impure things.
+:::
 
 ------------------------------------------------------------------------
 
@@ -497,18 +503,27 @@ nix (Nix) 3.0pre20200829_f156513
 Writing flakes
 --------------
 
-::: notes
-There is quite a lot of information about flakes on the web, but I haven't
-found much advice on how to actually write or integrate flakes into already
-existing projects. I would like to remedy that by sharing my experience
-of flakifying the infrastructure.
+::: notes 
+There is quite a lot of information about flakes on the web,
+but I haven't found much advice on how to actually write or integrate flakes
+into already existing projects. I would like to remedy that by explaining
+what everything means in a flake and sharing my experience of flakifying
+the infrastructure. 
 :::
 
 ### Initialize our first flake
 
+::: notes
+Let's initialize our first flake:
+:::
+
     $ mkdir my-first-flake && cd my-first-flake
     $ nix flake init
     $ cat flake.nix
+
+::: notes
+And take a look at what's inside:
+:::
 
 ### `flake.nix`
 ```
@@ -521,7 +536,99 @@ of flakifying the infrastructure.
 }
 ```
 
-But unstable Nix is not an option for CI/developers!
+::: notes
+
+Let's go through what every part of that file. First of all, there is `description`,
+and I'm pretty sure we all understand what this is for. Next, there is
+`outputs`, which is a function of `inputs`. It returns the attrset of,
+well, outputs. There are some attributes that are known to nix (both `packages`
+and `defaultPackage` are standard), but you may also provide your own.
+
+The argument of `outputs` is the attrset of `inputs`. `self` is always
+an input, and it refers to this very flake, `nixpkgs` is an "indirect"
+input (meaning its value is taken from a flake registry and not from `inputs`
+attribute of this flake; don't worry about it too much, it is the same
+as specifying `inputs.nixpkgs.url = "github:nixos/nixpkgs"`).
+
+As you can see, all the flake outputs are available as top-level attributes
+of those corresponding inputs. However, you actually can also access other
+flake attributes, such as `description` or `inputs`. And, if you cast any
+of the input to a string, it will be the path to that flake's source.
+
+Anyways, let's look at the first line of `outputs`. Let's go over what
+everything means here. `packages` is an attribute set, where attribute
+names are platforms and values are attribute sets of derivations. `legacyPackages`
+is an attribute designed specifically for nixpkgs: it's an attrset where
+once again platforms are names, but values are arbitrary attribute sets.
+In case of `nixpkgs`, `legacyPackages` exports all of the packages we know
+and love from `nixpkgs` arranged as usual for every platform it supports.
+So, this line actually means "this flake exports `hello` for platform `x86_64-linux`,
+by taking `hello` for `x86_64-linux` from nixpkgs".
+
+Let's go over the next line. `defaultPackages` is an attrset where names
+are -- you guessed it -- platforms, and values are derivations. This might
+be a bit hard to comprehend at first since we're used to seeing attribute
+names roughly match package names in nixpkgs, but if you think about it
+for a second it makes sense to do this for a default package. `self.packages.x86_64-linux.hello`
+is pretty easy to understand -- it is one of the outputs from this very
+flake. So, what this line means is that the default package of this flake
+for `x86_64-linux` is `hello`.
+
+Notice how the `x86_64-linux` is specified explicitly here. This means
+that this flake will only provide outputs for this particular platform.
+This is not really good for being cross-platform, you might think. Actually,
+while this way of specifying systems is somewhat more verbose, it's also
+much easier for the user to choose for which platform they want to evaluate
+and build. Combined with remote builders, this is a very powerful feature
+of flakes. For example, provided a flake actually provides an `aarch64`
+version of a package, a user on `x86_64` NixOS may very easily build a
+native package for `aarch64` by using `boot.binfmt.emulatedSystems`.
+
+:::
+
+-------------------------------------------------------------------------------
+
+::: notes
+Now that we understand what every part of that file means, it's time to build!
+:::
+
+### Build it!
+
+    $ nix build
+    warning: creating lock file '/.../my-first-flake/flake.lock'
+
+::: notes
+As you can see, when we build our flake for the first time, it downloads
+the latest versions of all the inputs and pins them in `flake.lock`.
+:::
+
+    # Actually the same as
+    $ nix build .#defaultPackage.x86_64-linux
+
+::: notes 
+By default, `nix build` will try to build `defaultPackage.$CURRENT_PLATFORM`,
+but we can also tell it to build that explicitly.
+:::
+
+    # Note how fast subsequent builds are!
+    $ time nix build
+    nix build  0.01s user 0.01s system 88% cpu 0.021 total
+
+::: notes 
+Note that the second time around, nix doesn't download anything, nor does
+it build anything. In fact, it doesn't even evaluate anything because of
+evaluation caching!
+:::
+
+    $ ./result/bin/hello
+    Hello, world!
+
+::: notes
+
+:::
+
+
+But unstable Nix is not an option for CI / developers / my grandmother!
 ----------------------------------------------------
 
 ::: notes

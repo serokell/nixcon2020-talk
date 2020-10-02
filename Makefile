@@ -2,22 +2,26 @@ ALL = presentation.pdf speaker-notes.pdf article.html
 
 TALK = talk.md
 
-THEME ?= Nord
-
-LOGO ?= images/logo-small.png
-
-BEAMER_OPTS = --standalone --pdf-engine=xelatex --slide-level=2 --to beamer
+BEAMER_OPTS = --standalone \
+  --pdf-engine=xelatex \
+  --pdf-engine-opt=-shell-escape \
+  --pdf-engine-opt=-output-directory=/tmp/pandoc \
+  --slide-level=2 \
+  --to beamer \
+  --no-highlight \
+  --lua-filter minted.lua
 
 
 all: $(ALL)
-
-.PHONY: all
 
 presentation.pdf: $(TALK)
 	pandoc $(BEAMER_OPTS) -o $@ $<
 
 speaker-notes.pdf: $(TALK)
 	pandoc $(BEAMER_OPTS) --metadata='classoption:notes=only' -o $@ $<
+
+talk.pdf: $(TALK)
+	pandoc --standalone --pdf-engine=xelatex --lua-filter minted.lua --pdf-engine-opt=-shell-escape --pdf-engine-opt=-output-directory=/tmp/pandoc --to pdf -o $@ $<
 
 article.html: $(TALK)
 	pandoc --standalone --to html	-o $@ $<
