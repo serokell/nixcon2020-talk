@@ -93,11 +93,13 @@ versions and checksums of all the `inputs`.
 
 ### `flake.nix`
 
-    {
-      description = "<...>";
-      inputs = { nixpkgs = <...>; };
-      outputs = { self, nixpkgs }: { <...> };
-    }
+```
+{
+  description = "<...>";
+  inputs = { nixpkgs = <...>; };
+  outputs = { self, nixpkgs }: { <...> };
+}
+```
 
 ### `flake.lock`
 
@@ -108,6 +110,7 @@ versions and checksums of all the `inputs`.
   "version": 7
 }
 ```
+
 
 Why would one use them for production?
 ======================================
@@ -135,7 +138,6 @@ What qualities do we need from nix in our production projects?
 --------------------------------------------------------------
 
 -   Reproducible
-
     ::: notes
     at both evaluation and build time: whether it's a developer
     building the project on their computer or a CI build, the output
@@ -188,7 +190,9 @@ downloads tarballs, unpacks and places them somewhere in `NIX_PATH`.
 
 ### `default.nix`
 
-    let pkgs = import <nixpkgs> { }; in pkgs.callPackage ./talk.nix { }
+```
+let pkgs = import <nixpkgs> { }; in pkgs.callPackage ./talk.nix { }
+```
 
 ### Update (stateful)
 
@@ -229,12 +233,22 @@ channel -- you can easily pin your dependencies with `builtins` (either
         https://github.com/nixos/nixpkgs/archive/66a26e65.tar.gz
     # Paste the output to sha256 argument of fetchTarball
 
+:::
+
+::: block
 ### `default.nix`
 
-    let nixpkgs = builtins.fetchTarball {
-      url = "https://github.com/nixos/nixpkgs/archive/66a26e65.tar.gz";
-      sha256 = "1hdk7frf66if9b35f0xhjs2322y280k2kivpzkfc5s1lc16kzkdp";
-    }; pkgs = import nixpkgs { }; in pkgs.callPackage ./talk.nix { }
+
+```
+let nixpkgs = builtins.fetchTarball {
+  url = "https://github.com/nixos/nixpkgs/archive/66a26e65.tar.gz";
+  sha256 = "1hdk7frf66if9b35f0xhjs2322y280k2kivpzkfc5s1lc16kzkdp";
+}; pkgs = import nixpkgs { }; in pkgs.callPackage ./talk.nix { }
+```
+:::
+
+-   No way to easily update or override inputs (requires changing the
+    file manually)
 
 Alternatives: Niv
 -----------------
@@ -264,8 +278,10 @@ that promise.
 
 ### `default.nix`
 
-    let sources = import ./nix/sources.nix; pkgs = import sources.nixpkgs { };
-    in pkgs.callPackage ./talk.nix { }
+```
+let sources = import ./nix/sources.nix; pkgs = import sources.nixpkgs { };
+in pkgs.callPackage ./talk.nix { }
+```
 
 ### Update
 
@@ -336,21 +352,19 @@ As you might have guessed, flakes solve all of these problems.
 -   Integrate tightly with other nix tooling.
 :::
 
-    {
-      inputs = {
-        nixpkgs.url = "github:serokell/nixpkgs";
-        beamer-theme-serokell.url = "github:serokell/beamer-theme-serokell";
-        beamer-theme-serokell.flake = false;
-        nix-pandoc.url = "github:serokell/nix-pandoc";
-        nix-pandoc.inputs.nixpkgs.follows = "nixpkgs";
-      };
-      outputs = { self, nixpkgs, nix-pandoc, beamer-theme-serokell }: {
-        defaultPackage = builtins.mapAttrs (_: pkgs:
-          (pkgs.extend nix-pandoc.overlay).callPackage ./talk.nix {
-            inherit beamer-theme-serokell;
-          }) nixpkgs.legacyPackages;
-      };
-    }
+### `flake.nix`
+```
+{
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs";
+  };
+  outputs = { self, nixpkgs }: {
+    defaultPackage = builtins.mapAttrs
+      (_: pkgs: pkgs.callPackage ./talk.nix { })
+      nixpkgs.legacyPackages;
+  };
+}
+```
 
 ------------------------------------------------------------------------
 
@@ -444,15 +458,11 @@ have to get a version of Nix that supports them. The easiest option is
 to get `nixUnstable` from nixpkgs.
 :::
 
-    $ nix-shell -p nixUnstable
-    $ nix --version
-    nix (Nix) 3.0pre20200829_f156513
-
-### Try it!
-
-    $ mkdir my-first-flake && cd my-first-flake
-    $ nix flake init
-    $ nix build
+```
+$ nix-shell -p nixUnstable
+$ nix --version
+nix (Nix) 3.0pre20200829_f156513
+```
 
 ### Read Eelco's blog posts
 
