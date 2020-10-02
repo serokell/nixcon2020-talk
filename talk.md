@@ -396,13 +396,33 @@ also change the interface of `nix`. Old interface (`nix-` commands) is
 still available for compatibility purposes.
 :::
 
-  **Old**                   **New (flakes)**
-  ------------------------- -----------------------------------
-  `nix-build -A foo`        `nix build .#foo`
-  `nix-shell -p foo`        `nix shell nixpkgs#foo`
-  `nix-shell -A foo`        `nix develop .#foo`
-  `nix-env -iA nixos.foo`   `nix profile install nixpkgs#foo`
-  `nix-env -f . -iA foo`    `nix profile install .#foo`
+::: columns
+
+:::: column
+### Old
+
+    nix-build -A foo
+    nix-shell -p foo
+    nix-shell "<nixpkgs>" -A foo
+    nix-env -iA nixos.foo
+    nix-env -f . -iA foo
+    nix-instantiate -A foo
+
+::::
+
+:::: column
+### New
+
+    nix build .#foo
+    nix shell nixpkgs#foo
+    nix develop nixpkgs#foo
+    nix profile install nixpkgs#foo
+    nix profile install .#foo
+    nix eval .#foo
+
+::::
+
+:::
 
 Flake references
 ----------------
