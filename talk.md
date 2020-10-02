@@ -493,3 +493,56 @@ nix (Nix) 3.0pre20200829_f156513
 -   [tweag.io/blog/2020-06-25-eval-cache](https://www.tweag.io/blog/2020-06-25-eval-cache/)
 -   [tweag.io/blog/2020-07-31-nixos-flakes](https://www.tweag.io/blog/2020-07-31-nixos-flakes/)
 
+
+Writing flakes
+--------------
+
+::: notes
+There is quite a lot of information about flakes on the web, but I haven't
+found much advice on how to actually write or integrate flakes into already
+existing projects. I would like to remedy that by sharing my experience
+of flakifying the infrastructure.
+:::
+
+### Initialize our first flake
+
+    $ mkdir my-first-flake && cd my-first-flake
+    $ nix flake init
+    $ cat flake.nix
+
+### `flake.nix`
+```
+{
+  description = "A very basic flake";
+  outputs = { self, nixpkgs }: {
+    packages.x86_64-linux.hello = nixpkgs.legacyPackages.x86_64-linux.hello;
+    defaultPackage.x86_64-linux = self.packages.x86_64-linux.hello;
+  };
+}
+```
+
+But unstable Nix is not an option for CI/developers!
+----------------------------------------------------
+
+::: notes
+You might say. Well, that is true, but fear not -- Eelco has a solution:
+`flake-compat`, a compatibility layer which allows you to use flakes from
+old, non-flake nix. You still need a newer Nix version to be able to manipulate
+flake dependencies, but your users don't.
+:::
+
+
+### `default.nix`
+
+```
+(import (fetchTarball
+  "https://github.com/edolstra/flake-compat/archive/master.tar.gz") {
+    src = builtins.fetchGit ./.;
+  }).defaultNix
+```
+
+### Build it!
+
+    $ nix --version
+    nix (Nix) 2.3.7
+    $ nix-build
