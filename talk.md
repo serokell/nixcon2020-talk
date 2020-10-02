@@ -25,6 +25,8 @@ experiences and thoughts on the matter.
 You may find sources for this talk at
 **<https://github.com/serokell/nixcon2020-talk>** .
 
+I encourage you to build it and follow along by yourself!
+
 ::: notes
 This talk is separated into three sections, each one a bit more advanced
 than the last. I hope that it will be useful to three categories of
@@ -114,8 +116,8 @@ Why would one use them for production?
 Now that you know what a flake is, we can move on to the next question:
 Why would one use them in a production environment? There are two parts
 to this question: Is there even a point? And aren't flakes unstable
-right now? Answers are "Yes" and "Kind of". But, to understand
-flakes better, let's first look at prior art.
+right now? Answers are "Yes" and "Kind of". But first, let's look at our
+requirements to understand what problems we're trying to solve.
 :::
 
 ### What are the benefits? Is there a point in using flakes?
@@ -141,18 +143,21 @@ What qualities do we need from nix in our production projects?
     :::
 
 -   Easy to use
-
     ::: notes
     Developers with little nix experience need to be able to easily
     update dependencies and build their project;
     :::
 
 -   Cross-platform
-
     ::: notes
     Our developers use all three major OSs and we need to support all of
     those.
     :::
+
+::: notes
+So, to understand why we are excited about flakes, let's take a look at
+the alternatives.
+:::
 
 Alternatives: Channels
 ----------------------
@@ -395,9 +400,9 @@ you can now easily fetch private repos without resorting to `-E`.
 ### Before
 
     $ nix-shell https://github.com/serokell/xrefcheck/archive/master.tar.gz \
-       -A xrefcheck
+        -A xrefcheck
     $ nix-shell -p "(import (builtins.fetchGit \
-      https://example.com/private/repo)).something"
+        https://example.com/private/repo)).something"
 
 ### Now
 
@@ -415,6 +420,8 @@ is why we've decided to use them for many of our projects.
 -   Hermetic and reproducible evaluation
 -   Intuitive, consistent, less verbose user interface
 -   (Meta-)dependency management integrated directly into nix commands
+
+
 
 How to use flakes right now?
 ============================
