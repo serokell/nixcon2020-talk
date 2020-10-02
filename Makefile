@@ -1,6 +1,6 @@
 ALL = presentation.pdf speaker-notes.pdf article.html
 
-TALK = talk.org
+TALK = talk.md
 
 THEME ?= Nord
 
