@@ -3,11 +3,11 @@
     "beamer-theme-serokell": {
       "flake": false,
       "locked": {
-        "lastModified": 1601538885,
-        "narHash": "sha256-Mn5ApkJIX3vxxvkMoPWdGc6Z9lwBpiiEnzulK6ISCuQ=",
+        "lastModified": 1601722979,
+        "narHash": "sha256-Kp4tNZ1iZ+Qw+YuCvHAefg3EokygD4W76iqtd74t5lg=",
         "owner": "serokell",
         "repo": "beamer-theme-serokell",
-        "rev": "72d043555ea10ea713a628c658d6f4ae718bd686",
+        "rev": "82168735f3da769ae8e0c9db3791656c34e5ee08",
         "type": "github"
       },
       "original": {

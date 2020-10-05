@@ -4,7 +4,6 @@ subtitle: What? Why? How?
 author: Alexander Bantyev @balsoft
 institute: serokell.io
 date: 2020-10-16
-slidelevel: 3
 aspectratio: 169
 mainfont: Catamaran
 monofont: Ubuntu Mono
@@ -12,8 +11,9 @@ sansfont: Oswald
 theme: Serokell
 header-includes:
   - \usepackage[outputdir=_output]{minted}
-  - \usemintedstyle{monokai}
+  - \usemintedstyle{native}
 ---
+
 
 
   
@@ -485,11 +485,9 @@ have to get a version of Nix that supports them. The easiest option is
 to get `nixUnstable` from nixpkgs.
 :::
 
-```
-$ nix-shell -p nixUnstable
-$ nix --version
-nix (Nix) 3.0pre20200829_f156513
-```
+    $ nix-shell -p nixUnstable
+    $ nix --version
+    nix (Nix) 3.0pre20200829_f156513
 
 ### Read Eelco's blog posts
 
@@ -517,6 +515,7 @@ Let's initialize our first flake:
 
     $ mkdir my-first-flake && cd my-first-flake
     $ nix flake init
+    $ git init && git add --all # flake.nix must be in git index
     $ cat flake.nix
 
 ::: notes
@@ -536,11 +535,12 @@ And take a look at what's inside:
 
 ::: notes
 
-Let's go through what every part of that file. First of all, there is `description`,
-and I'm pretty sure we all understand what this is for. Next, there is
-`outputs`, which is a function of `inputs`. It returns the attrset of,
-well, outputs. There are some attributes that are known to nix (both `packages`
-and `defaultPackage` are standard), but you may also provide your own.
+Let's go through what every part of that file means. First of all, there
+is `description`, and I'm pretty sure we all understand what this is for.
+Next, there is `outputs`, which is a function of `inputs`. It returns the
+attrset of, well, outputs. There are some attributes that are known to
+nix (both `packages` and `defaultPackage` are standard), but you may also
+provide your own.
 
 The argument of `outputs` is the attrset of `inputs`. `self` is always
 an input, and it refers to this very flake, `nixpkgs` is an "indirect"
@@ -587,32 +587,30 @@ native package for `aarch64` by using `boot.binfmt.emulatedSystems`.
 ## 
 
 ::: notes
-Now that we understand what every part of that file means, it's time to build!
+Now that we understand what every part of that file means, it's time to use it!
 :::
 
-### Build it!
+### Use it!
 
     $ nix build
+    warning: Git tree '/home/balsoft/projects/my-first-flake' is dirty
     warning: creating lock file '/.../my-first-flake/flake.lock'
 
 ::: notes
 As you can see, when we build our flake for the first time, it downloads
-the latest versions of all the inputs and pins them in `flake.lock`.
+the latest versions of all the inputs and pins them in `flake.lock`. It
+also warns us that the git tree is dirty: that's so that we always know
+if what we're building will be reproducible if someone fetches the same
+commit as we are on or not.
 :::
-
-    # Actually the same as
+    
+    $ # Is actually "sugar" for
     $ nix build .#defaultPackage.x86_64-linux
 
 ::: notes 
 By default, `nix build` will try to build `defaultPackage.$CURRENT_PLATFORM`,
 but we can also tell it to build that explicitly.
-:::
 
-    # Note how fast subsequent builds are!
-    $ time nix build
-    nix build  0.01s user 0.01s system 88% cpu 0.021 total
-
-::: notes 
 Note that the second time around, nix doesn't download anything, nor does
 it build anything. In fact, it doesn't even evaluate anything because of
 evaluation caching!
@@ -620,9 +618,247 @@ evaluation caching!
 
     $ ./result/bin/hello
     Hello, world!
+    $ nix shell
+    $ # Same as
+    $ nix shell .#defaultPackage.x86_64-linux
+
+::: notes
+We can also open a shell with `hello` package available.
+:::
+
+    $ hello
+    Hello, world!
+    
+## 
+
+### Examine it
+
+    $ nix flake list-inputs
+    warning: Git tree '/<...>/my-first-flake' is dirty
+    git+file:///<...>/my-first-flake
+    └───nixpkgs: github:NixOS/nixpkgs/f26dcb48507bedfe704ca4374808ee725eae69bc
+
+    $ nix flake show
+    warning: Git tree '/<...>/my-first-flake' is dirty
+    git+file:///<...>/my-first-flake
+    ├───defaultPackage
+    │   └───x86_64-linux: package 'hello-2.10'
+    └───packages
+        └───x86_64-linux
+            └───hello: package 'hello-2.10'
 
 
-But unstable Nix is not an option for CI / developers / my grandmother!
+Provide outputs for all systems
+-------------------------------
+
+### `flake.nix`
+
+```nix
+{
+  # <...>
+  outputs = { self, nixpkgs }: {
+    packages = builtins.mapAttrs (system: pkgs: { hello = pkgs.hello; })
+      nixpkgs.legacyPackages;
+
+    defaultPackage =
+      builtins.mapAttrs (_: packages: packages.hello) self.packages;
+  };
+}
+
+```
+
+::: notes
+Let's improve the flake by providing outputs for all the inputs supported
+by nixpkgs. Going forward, I'll skip parts that stay the same and only
+show the changes.
+
+What does the `packages` declaration means? Well, we use `mapAttrs` function
+to map over all of the platforms supported by `nixpkgs` (remember that
+attributes of `legacyPackages` are per-platform packagesets). `mapAttrs`
+takes a function of two arguments: attribute name (it's the name of the
+platform in our case) and value (it's the packageset). Now, for every platform
+we generate an attribute set of packages, with just one attribute -- `hello`,
+which takes `hello` from the packageset for the corresponding platform.
+
+`defaultPackage` declaration is fairly similar: map over all the platforms
+in `packages` of this very flake and for every platform, return `hello`
+from that package set.
+:::
+
+## 
+
+### Try building for another platform
+
+    $ nix build .#packages.x86_64-darwin.hello
+
+::: notes
+Surprisingly, it builds! Well, it's not actually that surprising: after
+all, hydra builds quite a lot of packages for Darwin which are subsequently
+made available for substitution. `hello` is clearly one of them.
+:::
+
+    $ ./result/bin/hello
+    zsh: exec format error: ./result/bin/hello
+
+::: notes
+Well, it doesn't actually run, but this is expected -- after all, we're
+on a different platform!
+:::
+
+Adding a runnable "application"
+-------------------------------
+
+### `flake.nix`
+
+```nix
+{
+  outputs = { self, nixpkgs }: {
+    # <...>
+    defaultApp = builtins.mapAttrs (system: package: {
+      type = "app";
+      program = "${package}/bin/hello";
+    }) self.defaultPackage;
+  };
+}
+```
+
+::: notes
+Let's expand our flake by adding an application which will run our default
+package, `hello`. `defaultApp` and `apps` are analogous to `defaultPackage`
+and `packages`, but instead of derivations they have attrsets of form `{
+type = "app", program }`. So, once again, we map over `defaultPackage`
+of this very flake and return the attrset of correct form for every platform.
+:::
+
+### Run
+
+    $ nix run
+    Hello, world!
+
+Adding checks
+-------------
+
+
+### `flake.nix`
+
+```nix
+{
+  outputs = { self, nixpkgs }: {
+    # <...>
+    checks = builtins.mapAttrs (system: pkgs: {
+      helloOutputCorrect = pkgs.runCommand "hello-output-correct" { } ''
+        HELLO_OUTPUT="$(${self.packages.${system}.hello}/bin/hello)"
+        echo "Hello output is: $HELLO_OUTPUT"
+        EXPECTED="Hello, world!"
+        echo "Expected: $EXPECTED"
+        [[ "$HELLO_OUTPUT" == "$EXPECTED" ]] && touch $out
+      '';
+    }) nixpkgs.legacyPackages;
+  };
+}
+```
+
+::: notes
+`checks` is analogous to `packages`, but the derivations are supposed to
+be checks and not packages (pretty obvious, huh?). Here, we map over `nixpkgs.legacyPackages`
+again and actually use platform's name to take the `hello` package from
+this flake for the correct platform.
+:::
+
+## 
+
+### Let's check!
+
+    $ nix flake check -L
+    
+::: notes
+`nix flake check` checks that all of the known outputs are of correct format
+and also runs all the checks for the current platform. `-L` flag (which
+all nix command accept) displays all of the build logs (they are hidden
+by default now and are only shows in case of failure).
+:::
+
+    hello-output-correct> Hello output is: Hello, world!
+    hello-output-correct> Expected: Hello, world!
+
+### Let's break it and try to check
+
+    $ sed "s/Hello, world/hello world/" -i flake.nix
+
+::: notes
+Let's replace the expected test output with an incorrect one
+:::
+
+    $ nix flake check
+    error: --- Error --- nix
+    error: --- Error --- nix-daemon
+    builder for '/nix/store/....drv' failed with exit code 1; last 2 log lines:
+    Hello output is: Hello, world!
+    Expected: hello world!
+
+::: notes
+As you can see, a check fails and `nix flake check` errors out.
+:::
+
+    $ sed "s/hello world/Hello, world/" -i flake.nix
+    
+::: notes
+Let's be good and fix our tests again!
+:::
+
+Packaging an application
+------------------------
+
+::: notes
+Now that we know how to build flakes and examine their dependencies, let's
+replace GNU Hello from nixpkgs with our own, simple implementation.
+:::
+
+### `hello.c`
+
+```c
+int main() {
+  puts("Hello, world!");
+}
+```
+
+### `hello.nix`
+
+```nix
+{ stdenv }:
+stdenv.mkDerivation {
+  name = "my-hello";
+  src = ./hello.c;
+  buildCommand = ''
+    mkdir -p $out/bin
+    gcc $src -o $out/bin/hello
+  '';
+}
+```
+
+::: notes
+This is a pretty standard `callPackage`able derivation; it has a single
+`stdenv` dependency and just uses gcc to build our simple executable.
+:::
+
+## 
+
+### `flake.nix`
+
+```nix
+{
+  outputs = { self, nixpkgs }: {
+    packages = builtins.mapAttrs
+      (system: pkgs: { hello = pkgs.callPackage ./hello.nix { }; })
+      nixpkgs.legacyPackages;
+
+    # <...>
+  };
+}
+```
+
+
+But unstable Nix is not an option for CI/developers!
 ----------------------------------------------------
 
 ::: notes
@@ -647,3 +883,4 @@ flake dependencies, but your users don't.
     $ nix --version
     nix (Nix) 2.3.7
     $ nix-build
+
