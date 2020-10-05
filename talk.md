@@ -21,7 +21,7 @@ About this presentation
 -----------------------
 
 ::: notes
-Hi! I'm Alexander Bantyev, known online as @balsoft, and I write Nix at
+Hi, I'm Alexander Bantyev, known online as @balsoft, and I write Nix at
 Serokell. Lately, we have started switching pipelines for our production
 systems to flakes, and I would like to explain why and share some of my
 experiences and thoughts on the matter.
@@ -30,7 +30,7 @@ experiences and thoughts on the matter.
 You may find sources for this talk at
 **<https://github.com/serokell/nixcon2020-talk>** .
 
-I encourage you to build it and follow along by yourself!
+I encourage you to build it and follow along by yourself.
 
 ::: notes
 This talk is separated into three sections, each one a bit more advanced
@@ -159,8 +159,8 @@ as an example.
 Alternatives: Channels
 ----------------------
 
-::: notes
-Channels are a very simple idea: a separate command, `nix-channel`,
+::: notes 
+Channels are a simple idea: a separate command, `nix-channel`,
 downloads tarballs, unpacks and places them somewhere in `NIX_PATH`.
 
 -   Benefits
@@ -251,7 +251,7 @@ In summer 2019, @nmattia started work on Niv, a project which promises
 that promise. We have switched most of our projects to use Niv before we
 started experimenting with flakes, and that wasn't any time wasted because
 transtitioning from Niv to flakes is easier than transitioning from
-channels to flakes!
+channels to flakes.
 
 -   Benefits
     -   Somewhat reproducible: unless you accidentally use channels or
@@ -305,13 +305,12 @@ Common drawbacks:
 
 -   Extreme reliance on `nixpkgs`;
 
-    ::: notes
-    Nixpkgs is *the* nix repository. Most `nix-*` tools implicitly use
-    nixpkgs in some way. This is bad for projects that simply can't be
-    added to nixpkgs (e.g. closed-source, proprietary, not very
-    important, company-specific, etc) because they require extra
-    fiddling to work with default tooling. This contradicts the "Ease
-    of use" requirement
+    ::: notes 
+    Nixpkgs is *the* nix repository. Most `nix-*` tools implicitly
+    use nixpkgs in some way. This is bad for projects that simply can't be
+    added to nixpkgs (e.g. closed-source, proprietary, trifling, company-specific,
+    etc) because they require extra fiddling to work with default tooling.
+    This contradicts the "Ease of use" requirement 
     :::
 
 -   No simple way to enforce hermetic evaluation;
@@ -470,19 +469,16 @@ How to use flakes right now?
 Quick start
 -----------
 
-::: notes
-Now that I hopefully have explained the *what* and the *why*, it's time
-for the *how*. In this section, I will explain the basics of how to get
-up and running with flakes and integrate them into your existing
-infrastructure.
+::: notes 
+Now that I have explained the *what* and the *why*, it's time for the *how*. In this section, I will explain the basics of how to get up and running with flakes and integrate them into your existing infrastructure. 
 :::
 
 ### Get Nix 3.0-pre
 
-::: notes
-First of all, if you want to create or modify flakes easily, you will
-have to get a version of Nix that supports them. The easiest option is
-to get `nixUnstable` from nixpkgs.
+::: notes 
+If you want to create or modify flakes easily, you will have to get a version
+of Nix that supports them. The easiest option is to get `nixUnstable` from
+nixpkgs. 
 :::
 
     $ nix-shell -p nixUnstable
@@ -587,7 +583,7 @@ native package for `aarch64` by using `boot.binfmt.emulatedSystems`.
 ## 
 
 ::: notes
-Now that we understand what every part of that file means, it's time to use it!
+Now that we understand what every part of that file means, it's time to use it.
 :::
 
 ### Use it!
@@ -810,7 +806,7 @@ Packaging an application
 ------------------------
 
 ::: notes
-Now that we know how to build flakes and examine their dependencies, let's
+Now that we know how to describe various outputs for flakes, let's
 replace GNU Hello from nixpkgs with our own, simple implementation.
 :::
 
@@ -857,8 +853,48 @@ This is a pretty standard `callPackage`able derivation; it has a single
 }
 ```
 
+::: notes
+We just replace `pkgs.hello` with `callPackage ./hello.nix { }` and now
+we're using our own hello world implementation! Let's see if it works:
+:::
 
-But unstable Nix is not an option for CI/developers!
+### Does it work?
+
+    $ nix build
+    error: --- SysError --- nix
+    getting status of '/nix/store/.../hello.nix': No such file or directory
+    (use '--show-trace' to show detailed location information)
+
+::: notes
+This fails because neither `hello.nix` or `hello.c` are added to git index,
+and thus Nix just filters them out before evaluation. Let's add everything
+to the index and try again.
+:::
+
+## 
+
+### Does it work?
+
+    $ git add --all
+    $ nix build
+    $ ./result/bin/hello
+    Hello, world!
+    $ nix flake check
+    $ nix run
+    Hello, world!
+
+::: notes
+It does!
+:::
+
+Shipping a NixOS module
+-----------------------
+
+::: notes
+Now that we have our application pack
+:::
+
+Wait, unstable Nix is not an option for CI/developers!
 ----------------------------------------------------
 
 ::: notes
