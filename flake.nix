@@ -21,8 +21,10 @@
       builtins.mapAttrs (_: packages: packages.talk) self.packages;
 
     devShell = builtins.mapAttrs (system: pkgs:
-      pkgs.mkShell {
+      let pkg = self.defaultPackage.${system};
+      in pkgs.mkShell {
         inputsFrom = [ self.defaultPackage.${system} ];
+        inherit (pkg) preBuild shellHook;
         buildInputs = [ pkgs.proselint ];
       }) nixpkgs.legacyPackages;
   };

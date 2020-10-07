@@ -1333,7 +1333,11 @@ Sometimes, you need to override dependency of a dependency -- use `dependency/de
 Thank you for your attention
 ----------------------------
 
-This talk was inspired, funded and proof-read by **[Serokell](https://serokell.io/)**.
+This talk was inspired and funded by **[Serokell](https://serokell.io/)**.
+
+Big Thank you to @notgne2, @zhenyavinogradov, @jollheef, @manpages, Denis
+Oleynikov and Alexander Rukin for support, proof-reading and help with
+design.
 
 The names and logo for Serokell are trademark of Serokell OÜ.
 
