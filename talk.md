@@ -701,8 +701,8 @@ Well, it doesn't actually run, but this is expected -- after all, we're
 on a different platform!
 :::
 
-Adding a runnable "application"
--------------------------------
+Add a runnable "application"
+----------------------------
 
 ### `flake.nix`
 
@@ -731,8 +731,8 @@ of this very flake and return the attrset of correct form for every platform.
     $ nix run
     Hello, world!
 
-Adding checks
--------------
+Add a test
+----------
 
 
 ### `flake.nix`
@@ -802,32 +802,32 @@ As you can see, a check fails and `nix flake check` errors out.
 Let's be good and fix our tests again!
 :::
 
-Packaging an application
-------------------------
+Package a local application
+---------------------------
 
 ::: notes
 Now that we know how to describe various outputs for flakes, let's
 replace GNU Hello from nixpkgs with our own, simple implementation.
 :::
 
-### `hello.c`
+### `hello.hs`
 
-```c
-int main() {
-  puts("Hello, world!");
-}
+```haskell
+main :: IO ()
+main = putStrLn "Hello, world!"
 ```
 
 ### `hello.nix`
 
 ```nix
-{ stdenv }:
+{ stdenv, ghc }:
 stdenv.mkDerivation {
   name = "my-hello";
-  src = ./hello.c;
+  nativeBuildInputs = [ ghc ];
+  src = ./hello.hs;
   buildCommand = ''
     mkdir -p $out/bin
-    gcc $src -o $out/bin/hello
+    ghc $src -o $out/bin/hello
   '';
 }
 ```
@@ -887,12 +887,188 @@ to the index and try again.
 It does!
 :::
 
+Add an overlay
+--------------
+
+::: notes
+While it's great to provide a ready-to-use derivation as an output of our
+flake, it would also be nice to provide an overlay that can be used with
+various versions of nixpkgs.
+:::
+
+### `flake.nix`
+
+```nix
+{
+  outputs = { self, nixpkgs }: {
+    # <...>
+    overlays.hello = final: prev: {
+      hello = final.callPackage ./hello.nix { };
+    };
+    overlay = self.overlays.hello;
+  };
+}
+```
+
+::: notes
+`overlays` is an attribute set of overlays, which must take two arguments:
+`final` and `prev`. `overlay` is an overlay.
+:::
+
 Shipping a NixOS module
 -----------------------
 
 ::: notes
-Now that we have our application pack
+Now that we have our application packaged, let's write a NixOS module for
+it.
 :::
+
+### `module.nix`
+
+```nix
+{ lib, pkgs, config, ... }: let cfg = config.services.hello; in {
+  options.services.hello = {
+    enable = lib.mkEnableOption "a program which displays a greeting";
+    program = lib.mkOption {
+      type = lib.types.package;
+      default = pkgs.hello;
+    };
+  };
+  config.systemd.services.hello = lib.mkIf cfg.enable {
+    path = [ cfg.package ];
+    serviceConfig.Type = "oneshot";
+    script = "hello";
+  };
+}
+```
+
+## 
+
+::: notes
+This is a very simple module that adds a one-shot systemd service which
+runs our application.
+:::
+
+### `flake.nix`
+
+```nix
+{
+  outputs = { self, nixpkgs }: {
+    # <...>
+    nixosModules.hello = import ./module.nix;
+  };
+}
+```
+
+Add a `--version` flag
+----------------------
+
+::: notes
+Let's add a `--version` flag to our `hello` that tells us from which git
+revision the executable was build. I'm not going to explain the changes
+to Haskell side of things -- just know that it reads the `VERSION` environment
+variable at build time to get the current version.
+:::
+
+### `hello.hs`
+
+```haskell
+{-# LANGUAGE TemplateHaskell, LambdaCase #-}
+
+import Language.Haskell.TH.Syntax (liftString, runIO)
+import System.Environment (getEnv, getArgs)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad (join)
+
+main :: IO ()
+main = getArgs >>= \case
+  [] -> putStrLn "Hello, world"
+  ["--version"] -> putStrLn version
+  ["-v"] -> putStrLn version
+  otherwise -> error "Unknown command-line arguments!"
+  where version = $(join $ liftIO $ liftString <$> getEnv "VERSION")
+```
+
+## 
+
+### `hello.nix`
+
+```nix
+{ stdenv, ghc, version ? "unknown" }:
+stdenv.mkDerivation {
+  # <...>
+  VERSION = version;
+}
+```
+
+::: notes
+Here, we add a `VERSION` argument to `mkDerivation`, which sets an env
+variable inside the build.
+:::
+
+## 
+
+### `flake.nix`
+
+```nix
+{
+  outputs = {self, nixpkgs}: {
+    packages = builtins.mapAttrs (system: pkgs: {
+      hello = pkgs.callPackage ./hello.nix {
+        version = ''
+          Hello ${self.rev or self.lastModifiedDate},
+          nixpkgs ${nixpkgs.rev or nixpkgs.lastModifiedDate}'';
+      };
+    }) nixpkgs.legacyPackages;
+    # <...>
+  };
+}
+```
+
+::: notes
+Here, we use the fact that evaluated flakes include some information about
+their source as attribute. In particular, `git` flakes provide infomation
+about their revision when they aren't dirty and about last file modification
+time when they are. We use this to provide information about both this
+flake itself and nixpkgs in the `--version` output of our program.
+:::
+
+## 
+
+### Try it
+
+    $ nix run . -- --version
+    warning: Git tree '/.../my-first-flake' is dirty
+    Hello 20201007165440,
+    nixpkgs 84d74ae9c9cbed73274b8e4e00be14688ffc93fe
+
+::: notes
+Because our tree is currently dirty, it shows a date for the Hello itself
+and the revision for nixpkgs. Great!
+:::
+
+Publish our flake
+-----------------
+
+::: notes
+Now that we have our very own "Hello" flake, let's publish it so that people
+can use it!
+:::
+
+### Publish
+
+    $ cd ..; mv my-first-flake hello-flake; cd hello-flake
+    $ # Create a new repo on your favorite hosting site
+    $ git remote add origin ssh://git@example.com/you/hello-flake.git
+    $ git commit -m "Initial commit"
+    $ git push --set-upstream-to origin master
+
+### Use it
+
+    $ nix run git+ssh://git@example.com/you/hello-flake.git
+    Hello, world!
+    $ # Note: if you don't want to publish your repo, try
+    $ nix run github:balsoft/hello-flake
 
 Wait, unstable Nix is not an option for CI/developers!
 ----------------------------------------------------
@@ -920,3 +1096,253 @@ flake dependencies, but your users don't.
     nix (Nix) 2.3.7
     $ nix-build
 
+    
+Deploy the application
+----------------------
+
+::: notes
+Now that we have published our application, let's say we want to deploy
+it somewhere.
+
+It's actually quite a common situation for software companies: you are
+developing an open-source project, and you want to host it on your server.
+Including server definitions in the project itself is pretty bad since
+you want other people to use the project and they will no doubt have their
+own deployments. So, let's create a new "infra" project and define a NixOS
+system there. 
+:::
+
+### Create an `infra` repo
+
+    $ mkdir hello-infra
+    $ cd hello-infra
+    $ git init
+
+### `flake.nix`
+
+```nix
+{
+  description = "Deployment infrastructure for hello-flake";
+  inputs = {
+    hello.url = "git+ssh://example.com/you/hello-flake.git";
+    hello.inputs.nixpkgs.follows = "nixpkgs";
+    # flake = true;
+  };
+  # <...>
+}
+```
+
+::: notes
+
+Let's go over what's happening here. `inputs.hello.url` tells nix that
+our flake has an input (dependency) named `hello` and that it should be
+fetched from the place where we put it earlier. Nix will fetch that input
+if you don't have a `flake.lock` file before even beginning to evaluate
+`outputs`. When the version is pinned in the lockfile, it won't fetch the
+source again unless needed by an output you're currently building.
+
+`inputs.hello.inputs.nixpkgs.follows` tells Nix that it should substitute
+whichever nixpkgs version this `hello-infra` flake uses for whatever `hello-flake`
+has in its lockfile. This allows us to avoid duplicating nixpkgs versions,
+but removes some of the reproducibility.
+
+We may also specify `flake = true`, but that is the default. If you set
+`flake = false`, Nix will not interpret that input as a flake and it may
+only be used to get the source, and not the outputs. This is useful to
+fetch dependencies which don't have `flake.nix` at the root (yet).
+
+:::
+
+## 
+
+::: notes
+Now let's write a description of our server. First, let's start with the
+shim that we'll use to deploy it to a nixos container. NixOS helpfully
+breaks the evaluation when we forget to define a bootloader or a root filesystem.
+Neither of those are needed by a container.
+:::
+
+### `shim.nix`
+
+```nix
+{
+  boot.loader.systemd-boot.enable = true;
+
+  fileSystems."/" = {
+    device = "/dev/sdZ0";
+    fsType = "btrfs";
+  };
+}
+```
+
+## 
+
+### `flake.nix`
+
+```nix
+{
+  # <...>
+  outputs = { self, nixpkgs, hello }: {
+    nixosConfigurations.hello = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [ hello.nixosModules.hello ./shim.nix
+        {
+          nixpkgs.overlays = [ hello.overlay ];
+          services.hello.enable = true;
+        }
+      ];
+    };
+  };
+}
+```
+
+::: notes
+
+Let's go over what's happening here line-by-line again. `nixosConfigurations.hello`
+specifies a NixOS system named `hello`. `nixos-rebuild` will use your hostname
+when choosing from `nixosConfigurations` if you don't tell it to use a
+specific one, so this can be thought of as the hostname.
+
+`nixpkgs.lib.nixosSystem` is a nixpkgs function that takes some
+arguments (you can read it's source to find out which) and outputs an
+evaluated NixOS system. Here, we're going to specify `system`
+(remember, flakes require explicitly specifying it every time!) and
+`modules`. `modules` is a list of NixOS modules -- it has the same
+semantics as `inputs` in your `configuration.nix`.  Here, we pass it
+`hello.nixosModules.hello` (which is a function), `./shim.nix` (a path
+to a nix file exporting an attrset) and an attrset. In this attrset,
+we make sure to include `hello.overlay` in the list of nixpkgs
+overlays and also enable our service.
+
+:::
+
+## 
+
+### Deploy to a container
+
+::: notes 
+Now that we have our infra flake, let's test it out in a `nixos-container`!
+If you have recent enough nixpkgs on your system and have Nix 3.0 in `PATH`,
+`nixos-container` is already flake-aware. So, we create the container,
+telling it to use `hello` configuration from `.` flake.
+:::
+
+    $ # Remember update nixpkgs to 20.03, 20.09 or unstable
+    $ # Alternatively,
+    $ nix shell nixpkgs#nixos-container
+    $ sudo nixos-container create --flake .#hello hello
+    $ # To update, replace "create" with "update"
+    $ sudo nixos-container start hello
+    ^C/run/current-system/sw/bin/nixos-container: failed to start container
+    
+::: notes 
+Let's attempt to start our new container.
+
+It may timeout (for a reason unrelated to flakes), so you can just kill
+it after 5-10 seconds of initilization
+:::
+
+    $ sudo nixos-container root-login hello
+
+::: notes
+Let's now log into our container!
+:::
+
+    [root@nixos:~]# systemctl restart hello
+    [root@nixos:~]# journalctl -u hello
+    Oct 06 19:47:40 nixos systemd[1]: Starting hello.service...
+    Oct 06 19:47:40 nixos hello-start[375]: Hello, world!
+    Oct 06 19:47:40 nixos systemd[1]: hello.service: Succeeded.
+    Oct 06 19:47:40 nixos systemd[1]: Finished hello.service.
+
+::: notes
+As you can see, our service works.
+:::
+
+Deploying to real systems
+-------------------------
+
+::: notes
+Obviously, `nixos-container` is not suited for production use, and you
+want to deploy your software to a real machine. Worry not, there are multiple
+ways to do that. I won't go into too much detail on any of those because
+I think they are mostly well-documented enough as-is.
+:::
+
+-   `nixos-rebuild`
+
+    ::: notes
+    With Nix 3.0, `nixos-rebuild` is flake-aware.
+    :::    
+    
+-   https://github.com/notgne2/deploy-rs
+    
+    ::: notes
+    At Serokell, we have been trying to come up with the perfect deployment
+    tool for as long as we are running NixOS. We ended up with a very simple
+    solution that uses one of flake's outputs to determine what to deploy and
+    where. It's inspired by `nix-simple-deploy`, but has a couple additional
+    features and a different interface. Mika, the developer of this tool, will
+    give a talk about 
+    :::
+
+-   https://github.com/misuzu/nix-simple-deploy
+
+    ::: notes
+    A simple tool written in Rust that copies profiles to the target server
+    and activates them.
+    :::
+
+-   etc
+
+    ::: notes
+    Most tools that you know and love today are either already compatible
+    with flakes or will be compatible soon. After all, if nothing else works,
+    you can just build the flake and then point those tools at the `result`
+    symlink!
+    :::
+
+Small tips and tricks
+---------------------
+
+::: notes 
+
+While using flakes, I have read some of Nix' source code and found some
+features which are quite non-obvious and obscure. Here, I present some
+of my findings to you so that you can use those features too!
+
+:::
+
+### Override dependency of dependency
+
+    $ nix build --override-inputs hello-flake/nixpkgs ../nixpkgs
+
+::: notes
+Sometimes, you need to override dependency of a dependency -- use `dependency/dependency`
+(may be nested) to achieve this.
+:::
+
+### Update all dependencies to latest versions
+
+    $ nix flake update --recreate-lock-file
+
+### Forcefully re-fetch the latest version of a flake
+
+    $ nix flake update github:you/your-flake
+
+Thank you for your attention
+----------------------------
+
+This talk was inspired, funded and proof-read by **[Serokell](https://serokell.io/)**.
+
+The names and logo for Serokell are trademark of Serokell OÜ.
+
+Fonts used in this presentation are taken from [Google Font Library](https://fonts.google.com)
+and are licensed under Open Font License.
+
+- **Catamaran** by Pria Ravichandran
+- **Oswald** by Vernon Adams
+- **Ubuntu Mono** by Dalton Maag
+
+Theme is [beamer-theme-serokell](https://github.com/serokell/beamer-theme-serokell),
+which is based on [The Nord Beamer Theme](https://github.com/junwei-wang/beamerthemeNord).
