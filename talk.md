@@ -53,9 +53,8 @@ RFC
 
 ::: notes
 Flakes were proposed in [RFC 49](https://github.com/NixOS/rfcs/pull/49),
-the RFC is accepted already and the work on flakes is ongoing in Nix'
-master branch. I believe they are going to be released as part of Nix
-3.0 release.
+the RFC is withdrawn, but the work on flakes is ongoing in Nix' master
+branch.
 :::
 
 <https://github.com/NixOS/rfcs/pull/49>
@@ -390,8 +389,8 @@ and that we never use `<nixpkgs>` or other impure things.
     # or
     $ nix build . --override-input nixpkgs ../nixpkgs
 
-New `nix` command UI
---------------------
+New `nix` CLI interface
+-----------------------
 
 ::: notes
 Apart from differences in evaluation and structure of the files, flakes
@@ -470,7 +469,9 @@ Quick start
 -----------
 
 ::: notes 
-Now that I have explained the *what* and the *why*, it's time for the *how*. In this section, I will explain the basics of how to get up and running with flakes and integrate them into your existing infrastructure. 
+Now that I have explained the *what* and the *why*, it's time for the *how*.
+In this section, I will explain the basics of how to get up and running
+with flakes and integrate them into your existing infrastructure. 
 :::
 
 ### Get Nix 3.0-pre
@@ -759,6 +760,9 @@ Add a test
 be checks and not packages (pretty obvious, huh?). Here, we map over `nixpkgs.legacyPackages`
 again and actually use platform's name to take the `hello` package from
 this flake for the correct platform.
+
+In this example, I will add this test inline, but you obviously should
+use a more proper test suite and just call it here.
 :::
 
 ## 
@@ -866,8 +870,10 @@ we're using our own hello world implementation! Let's see if it works:
     (use '--show-trace' to show detailed location information)
 
 ::: notes
-This fails because neither `hello.nix` or `hello.c` are added to git index,
-and thus Nix just filters them out before evaluation. Let's add everything
+This fails because neither `hello.nix` nor `hello.c` are added to git index,
+and thus Nix just filters them out before evaluation. This is done to make
+sure none of `gitignore`d files (which are usually build artifacts from
+language-specific build systems) end up in nix store. Let's add everything
 to the index and try again.
 :::
 
@@ -879,7 +885,6 @@ to the index and try again.
     $ nix build
     $ ./result/bin/hello
     Hello, world!
-    $ nix flake check
     $ nix run
     Hello, world!
 
@@ -978,7 +983,6 @@ variable at build time to get the current version.
 import Language.Haskell.TH.Syntax (liftString, runIO)
 import System.Environment (getEnv, getArgs)
 import Control.Monad.IO.Class (liftIO)
-import Control.Monad (join)
 
 main :: IO ()
 main = getArgs >>= \case
@@ -986,7 +990,7 @@ main = getArgs >>= \case
   ["--version"] -> putStrLn version
   ["-v"] -> putStrLn version
   otherwise -> error "Unknown command-line arguments!"
-  where version = $(join $ liftIO $ liftString <$> getEnv "VERSION")
+  where version = $(liftIO (getEnv "VERSION") >>= liftString)
 ```
 
 ## 
@@ -1208,7 +1212,7 @@ arguments (you can read it's source to find out which) and outputs an
 evaluated NixOS system. Here, we're going to specify `system`
 (remember, flakes require explicitly specifying it every time!) and
 `modules`. `modules` is a list of NixOS modules -- it has the same
-semantics as `inputs` in your `configuration.nix`.  Here, we pass it
+semantics as `inputs` in your `configuration.nix`. Here, we pass it
 `hello.nixosModules.hello` (which is a function), `./shim.nix` (a path
 to a nix file exporting an attrset) and an attrset. In this attrset,
 we make sure to include `hello.overlay` in the list of nixpkgs
@@ -1329,6 +1333,16 @@ Sometimes, you need to override dependency of a dependency -- use `dependency/de
 ### Forcefully re-fetch the latest version of a flake
 
     $ nix flake update github:you/your-flake
+
+### Simplify writing flakes
+
+https://github.com/numtide/flake-utils
+
+::: notes
+Writing `builtins.mapAttrs` every time gets repetetive and tedious; So,
+you may actually use `flake-utils`, a third-party pure-nix library that
+exports useful functions for mapping over all the known systems in nixpkgs.
+:::
 
 Thank you for your attention
 ----------------------------
